@@ -15,7 +15,7 @@ lst.pop(i_min)
 print(lst)
 lst=list(map(str, lst))
 s=", ".join(lst)
-f1 = open ("C:/Users/Artyom/Desktop/numtxt.txt", 'w')
+f1 = open ("numtxt.txt", 'w')
 f1.write(s)# изменили данные в файле
 f1.close()
 
