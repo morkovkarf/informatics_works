@@ -1,0 +1,90 @@
+#Этап 1
+import math
+import matplotlib.pyplot as plt
+import numpy as np
+import random
+xMin1 = 1
+xMax1 = 10
+yMin1 = 1
+yMax1 = 10
+xMin2 = 5
+xMax2 = 15
+yMin2 = 5
+yMax2 = 15
+x = []
+y = []
+p = 0.8
+random. seed(418)
+for i in range(50):
+    x.append([random.uniform(xMin1,xMax1), random.uniform(yMin1,yMax1)])
+for i in range(50):
+    y.append(0)
+    
+for i in range(50):
+    x.append([random.uniform(xMin2,xMax2), random.uniform(yMin2,yMax2)])
+for i in range(50):
+    y.append(1)
+#Этап 2
+def train_test_split(x, y, p):
+    x_train = []
+    y_train = []
+    x_test = []
+    y_test = []
+    for i in range(int(len(x)*p)):
+        index = random.randint(1, len(x)-1)
+        x_train.append(x[index])
+        y_train.append(y[index])
+        x.pop(index)
+        y.pop(index)
+    x_test = x
+    y_test = y
+    return x_train, y_train, x_test, y_test 
+x_train, y_train, x_test, y_test = train_test_split (x, y, p)
+#Этап 3
+def maxs_el (list_test, count_max):
+    fnl_list=[]
+    for k in range (count_max):
+        fnl_list.append(list_test[k])
+    fnl_list.sort()
+    for i in range (count_max, len(list_test)):
+        if list_test[i]>fnl_list[0]:
+            fnl_list[0]=list_test[i]
+            fnl_list.sort()
+    return fnl_list
+def fit (x_train, y_train, x_test, k=5):
+    y_predict = []
+    for test_point in x_test:
+        distances = [math.sqrt((test_point[0] - train_point[0])**2 + (test_point[1] - train_point[1])**2) for train_point in x_train]
+        k_nearest_indices = sorted(range(len(distances)), key=lambda i: distances[i])[:k]
+        votes = [y_train[i] for i in k_nearest_indices]
+        prediction = 1 if sum(votes) > k/2 else 0
+        y_predict.append(prediction)
+    return y_predict
+def acc_funct (y_test, y_predict):
+    hit=0
+    for i in  range (len(y_test)):
+        if y_test[i]==y_predict[i]:
+            hit+=1
+    accuracy=hit/len(y_test)
+    return accuracy
+plt.style.use('_mpl-gallery')
+fig, ax = plt.subplots()
+for i in range (len(y_train)):
+    if y_train[i]==0:
+        ax.scatter(x_train[i][0], x_train[i][1], s=30, c='blue')
+    else:
+        ax.scatter(x_train[i][0], x_train[i][1], s=70, c='blue', marker = '+')
+for i in range (len(y_predict)):
+    if y_test[i]==y_predict[i]:
+        if y_predict[i]==0:
+            ax.scatter(x_test[i][0], x_test[i][1], s=30, c='green')
+        else:
+            ax.scatter(x_test[i][0], x_test[i][1], s=70, c='green', marker = '+')
+    else:
+        if y_predict[i]==0:
+            ax.scatter(x_test[i][0], x_test[i][1], s=30, c='red')
+        else:
+            ax.scatter(x_test[i][0], x_test[i][1], s=70, c='red', marker = '+')
+    
+print (acc_funct (y_test, y_predict))
+plt.show()
