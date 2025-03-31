@@ -1,0 +1,32 @@
+import random
+from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.datasets import make_classification
+xMin1 = 1
+xMax1 = 10
+yMin1 = 1
+yMax1 = 10
+xMin2 = 5
+xMax2 = 15
+yMin2 = 5
+yMax2 = 15
+x = []
+y = []
+p = 0.8
+X, y = make_classificationn (n_samples=
+random. seed(418)
+for i in range(50):
+    x.append([random.uniform(xMin1,xMax1), random.uniform(yMin1,yMax1)])
+for i in range(50):
+    y.append(0)
+    
+for i in range(50):
+    x.append([random.uniform(xMin2,xMax2), random.uniform(yMin2,yMax2)])
+for i in range(50):
+    y.append(1)
+X_train, X_test, y_train, y_test = train_test_split(x, y, stratify=y, random_state=0)
+neigh = KNeighborsClassifier(n_neighbors=3)
+neigh.fit(X_train, y_train)
+y_predict = neigh.predict(X_test)
+accuraccy = accuracy_score (y_test, y_predict)
