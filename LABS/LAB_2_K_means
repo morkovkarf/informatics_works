@@ -1,0 +1,107 @@
+import random
+import math
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.widgets import Slider
+
+delta_x_parametr = 0.2
+k = 3
+marker_list = [i for i in range(k)]
+count_clasters = 3
+
+def circle_area(x0, y0, r, count):
+    X = []
+    i = 0
+    while i < count:
+        x = random.uniform(x0 - 5, x0 + 5)
+        y = random.uniform(y0 - 5, y0 + 5)
+        if (x - x0) ** 2 + (y - y0) ** 2 <= r ** 2:
+            X.append([x, y])
+            i += 1
+    return X
+
+
+X1 = circle_area(2, 3, 4, 25)
+X2 = circle_area(12, 13, 5, 30)
+X3 = circle_area(-8, -10, 3, 25)
+X = X1 + X2 + X3
+
+k_random = []
+random.seed(218)
+for i in range(k):
+    x = [random.uniform(min(-8 - 3, 12 - 5, 2 - 4), max(-8 + 3, 12 + 5, 2 + 4)),
+         random.uniform(min(-10 - 3, 13 - 5, 3 - 4), max(-10 + 3, 13 + 5, 3 + 4))]
+    k_random.append(x)
+
+def clast_process(point_list, k_random):
+    clast_list = []
+    for i in range(len(point_list)):
+        distances = []
+        for j in range(k):
+            s = math.sqrt((point_list[i][0] - k_random[j][0]) ** 2 + (point_list[i][1] - k_random[j][1]) ** 2)
+            distances.append(s)
+        ind_min = distances.index(min(distances))
+        clast_list.append(ind_min)
+    return clast_list
+
+def srd_znch(point_list, clast_list):
+    mid_list = []
+    for t in range(k):
+        count = 0
+        x = 0
+        y = 0
+        for i in range(len(point_list)):
+            if clast_list[i] == t:
+                x += point_list[i][0]
+                y += point_list[i][1]
+                count += 1
+        x_mid = x / count
+        y_mid = y / count
+        mid_list.append([x_mid, y_mid])
+    return mid_list
+
+
+epoch_centers = [k_random.copy()]
+delta_x_list = [delta_x_parametr + 1]
+
+while max(delta_x_list) > delta_x_parametr:
+    clast_list = clast_process(X, k_random)
+    k_random_new = srd_znch(X, clast_list)
+    delta_x_list = []
+    for i in range(k):
+        delta_x = math.sqrt((k_random_new[i][0] - k_random[i][0]) ** 2 + (k_random_new[i][1] - k_random[i][1]) ** 2)
+        delta_x_list.append(delta_x)
+    k_random = k_random_new
+    epoch_centers.append(k_random.copy())
+
+
+fig, ax = plt.subplots()
+plt.subplots_adjust(bottom=0.25)
+
+scatter = ax.scatter([x[0] for x in X], [x[1] for x in X], c='blue')
+
+initial_centers = ax.scatter([x[0] for x in epoch_centers[0]], [x[1] for x in epoch_centers[0]], c='black', s=50)
+
+cluster_centers = ax.scatter([x[0] for x in epoch_centers[-1]], [x[1] for x in epoch_centers[-1]], c='purple', s=50)
+
+axcolor = 'lightgoldenrodyellow'
+axepoch = fig.add_axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
+
+epoch_slider = Slider(
+    ax=axepoch,
+    label='Epoch',
+    valmin=0,
+    valmax=len(epoch_centers) - 1,
+    valinit=0,
+    valstep=1
+)
+
+def update(val):
+    epoch = int(epoch_slider.val)
+    cluster_centers.set_offsets(np.array(epoch_centers[epoch]))
+    fig.canvas.draw_idle()
+
+epoch_slider.on_changed(update)
+
+
+plt.show()
