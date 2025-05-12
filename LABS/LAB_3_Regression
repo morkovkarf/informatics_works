@@ -1,1 +1,25 @@
+x_min=0
+X_max=10
+points=500
+x = np.linspace(x_min, x_max, points)
+e=random.uniform(-3,3)
+y=a*x**b + c + e
+
+def get_dk(x: list, y: list, k: float, b: float) -> float:
+  
+	return result
+
+def get_db(x: list, y: list, k: float, b: float) -> float:
+	
+	return result
+
+def fit(speed, epochs):
+	k_list = [k0]
+	b_list = [b0]
+	for i in range(epochs):
+		k = k - speed * get_dk(x, y, k, b)
+		b = b - speed * get_db(x, y, k, b)
+		k_list.append(k)
+		b_list.append(b)
+	return k, b
 
