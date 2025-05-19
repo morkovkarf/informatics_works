@@ -1,0 +1,53 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from sklearn import linear_model
+
+# Загрузка данных
+df = pd.read_csv("датасет-1.csv", sep=',')
+print("Исходные данные:\n", df)
+
+# Предобработка данных
+df['price']=df['price'].str.replace(',','.')
+df['price']=df['price'].astype(float)
+
+# Визуализация данных
+plt.scatter(df['area'], df['price'], color='red', alpha=0.6)
+plt.title('Зависимость цены от площади')
+plt.xlabel('Площадь (кв.м.)')
+plt.ylabel('Стоимость (млн.руб)')
+plt.grid(True, linestyle='--', alpha=0.3)
+plt.show()
+
+# Обучение модели
+reg = linear_model.LinearRegression()
+reg.fit(df[['area']], df['price'])
+
+# Прогнозирование
+print("\nПрогноз стоимости квартиры 38 кв.м.:", reg.predict([[38]])[0])
+print("Прогноз стоимости квартиры 200 кв.м.:", reg.predict([[200]])[0])
+
+# Параметры модели
+print("\nПараметры модели:")
+print("a (наклон):", reg.coef_[0])
+print("b (пересечение):", reg.intercept_)
+
+# Визуализация с линией регрессии
+plt.scatter(df['area'], df['price'], color='red', alpha=0.6, label='Данные')
+plt.plot(df['area'], reg.predict(df[['area']]),
+         color='blue', linewidth=2, label='Линия регрессии')
+plt.title('Линейная регрессия')
+plt.xlabel('Площадь (кв.м.)')
+plt.ylabel('Стоимость (млн.руб)')
+plt.legend()
+plt.grid(True, linestyle='--', alpha=0.3)
+plt.show()
+
+# Прогнозирование для новых данных
+pred = pd.read_csv("prediction_price.csv", sep=',')
+predictions = reg.predict(pred[['area']])
+pred['predicted_prices'] = predictions
+print("\nПрогнозируемые цены:\n", pred)
+
+# Сохранение результатов
+pred.to_excel("new.xlsx", index=False)
+print("\nРезультаты сохранены в файл new.xlsx")
