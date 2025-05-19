@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 from sklearn import linear_model
 
 # Загрузка данных
-df = pd.read_csv("датасет-1.csv", sep=',')
+df = pd.read_csv("датасет.csv", sep=',')
 print("Исходные данные:\n", df)
 
 # Предобработка данных
