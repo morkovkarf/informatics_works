@@ -1,0 +1,113 @@
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.linear_model import SGDRegressor
+from sklearn.metrics import mean_absolute_percentage_error
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.pipeline import make_pipeline
+from matplotlib.widgets import Slider
+from scipy.optimize import minimize
+
+# 1. Генерация данных
+np.random.seed(42)
+x = np.linspace(0, 5, 200)
+y_true = 2 * x + 3 ** x * np.sin(1.5 * x)
+y_noisy = y_true + np.random.normal(0, 10, size=x.shape)
+
+# 2. Создание полиномиальных признаков (до 5 степени) и масштабирование
+poly = PolynomialFeatures(degree=5, include_bias=False)
+scaler = StandardScaler()
+X_poly = poly.fit_transform(x.reshape(-1, 1))
+X_scaled = scaler.fit_transform(X_poly)
+
+# 3. Функция для оптимизации параметров
+def objective(params):
+    alpha, l1_ratio, eta0 = params
+    model = SGDRegressor(
+        alpha=alpha,
+        penalty='elasticnet',
+        l1_ratio=l1_ratio,
+        learning_rate='invscaling',
+        eta0=eta0,
+        power_t=0.25,
+        max_iter=1000,
+        random_state=42
+    )
+    model.fit(X_scaled, y_noisy)
+    y_pred = model.predict(X_scaled)
+    return mean_absolute_percentage_error(y_noisy, y_pred)
+
+# Начальные значения параметров и границы
+initial_params = [0.001, 0.5, 0.01]
+bounds = [(1e-6, 1), (0, 1), (1e-3, 1)]
+
+# Оптимизация параметров
+result = minimize(objective, initial_params, bounds=bounds, method='L-BFGS-B')
+best_alpha, best_l1_ratio, best_eta0 = result.x
+
+# 4. Обучение с оптимальными параметрами
+best_params = {
+    'alpha': best_alpha,
+    'penalty': 'elasticnet',
+    'l1_ratio': best_l1_ratio,
+    'learning_rate': 'invscaling',
+    'eta0': best_eta0,
+    'power_t': 0.25,
+    'max_iter': 1,
+    'warm_start': True,
+    'random_state': 42
+}
+
+n_epochs = 500
+mape_history = []
+models = []
+
+sgd = SGDRegressor(**best_params)
+for epoch in range(n_epochs):
+    sgd.fit(X_scaled, y_noisy)
+    models.append({
+        'coef': sgd.coef_.copy(),
+        'intercept': sgd.intercept_.copy()
+    })
+    y_pred = sgd.predict(X_scaled)
+    mape_history.append(mean_absolute_percentage_error(y_noisy, y_pred))
+
+# 5. Визуализация
+plt.style.use('seaborn-v0_8')
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6), facecolor='#f5f5f5')
+plt.subplots_adjust(bottom=0.25)
+
+# Основной график
+ax1.set_facecolor('#f0f0f0')
+sc = ax1.scatter(x, y_noisy, c='#1f77b4', alpha=0.4, label='Данные')
+true_line, = ax1.plot(x, y_true, 'g-', linewidth=3, label='Истинная функция')
+pred_line, = ax1.plot(x, y_noisy, 'r-', linewidth=2, label='Прогноз модели')
+ax1.set_title(f'Регрессия (оптимизированные параметры)\nalpha={best_alpha:.2e}, l1_ratio={best_l1_ratio:.2f}, eta0={best_eta0:.2f}', pad=20)
+ax1.legend(fontsize=9)
+ax1.grid(True, linestyle='--', alpha=0.7)
+
+# График ошибки
+ax2.set_facecolor('#f0f0f0')
+mape_plot, = ax2.plot(mape_history, '#ff7f0e', linewidth=2)
+current_epoch = ax2.axvline(0, color='r', linestyle='--')
+ax2.set_title('Динамика ошибки MAPE', pad=20)
+ax2.set_xlabel('Эпоха обучения', labelpad=10)
+ax2.set_ylabel('MAPE (%)')
+ax2.grid(True, linestyle='--', alpha=0.7)
+
+# Слайдер
+slider_ax = plt.axes([0.25, 0.1, 0.5, 0.03], facecolor='lightgoldenrodyellow')
+epoch_slider = Slider(slider_ax, 'Эпоха', 0, n_epochs-1, valinit=0, valstep=1, color='#2ca02c')
+
+def update(epoch):
+    model = models[epoch]
+    y_pred = X_scaled @ model['coef'] + model['intercept']
+    pred_line.set_ydata(y_pred)
+    current_epoch.set_xdata([epoch, epoch])
+    ax1.set_title(f'Регрессия (эпоха {epoch+1}), MAPE: {mape_history[epoch]:.1f}%\n'
+                 f'alpha={best_alpha:.2e}, l1_ratio={best_l1_ratio:.2f}, eta0={best_eta0:.2f}', pad=20)
+    fig.canvas.draw_idle()
+
+epoch_slider.on_changed(update)
+update(0)
+plt.show()
+print ("Оптимальные параметры:", "alpha:", best_alpha, "l1_ratio:", best_l1_ratio, "eta0:", best_eta0 )
