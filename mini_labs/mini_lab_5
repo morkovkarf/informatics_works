@@ -1,37 +1,112 @@
-import random 
-import math
-import matplotlib.pyplot as plt
+import warnings
 import numpy as np
-#1
-def ring_area(x0, y0, r, delta_r, count):
-    X = []
-    i = 0
-    r_small=r-delta_r
-    while i < count:
-        x = random.uniform(x0 - r, x0 + r)
-        y = random.uniform(y0 - r, y0 + r)
-        if ((x - x0) ** 2 + (y - y0) ** 2 <= r ** 2) and ((x - x0) ** 2 + (y - y0) ** 2 >= r_small ** 2):
-            X.append([x, y])
-            i += 1
-    return X
-#X1=ring_area(0,0,5,0.9,160)
-#X2=ring_area(0,0,8,0.9,200)
-#2
-def parab_area (a, b, c, delta_c, x_min, x_max, count):
-    X=[]
-    c_small=c-delta_c
-    for i in range (count):
-        x = random.uniform(x_min, x_max)
-        y1 = a*x**2+b*x+c
-        y2 = a*x**2+b*x+c_small
-        y= random.uniform (min(y1,y2), max(y1,y2))
-        X.append([x,y])
-    return X
-X1=parab_area(-1,15,5,3,0,6,160)
-X2=parab_area(1,15,2,3,3,9,160)
-fig, ax = plt.subplots()
-scatter = ax.scatter([x[0] for x in X1], [x[1] for x in X1], c='blue')
-scatter = ax.scatter([x[0] for x in X2], [x[1] for x in X2], c='red')
-#scatter = ax.scatter([x[0] for x in X1], [x[1] for x in X1], c='blue')
-#scatter = ax.scatter([x[0] for x in X2], [x[1] for x in X2], c='red')
+import matplotlib.pyplot as plt
+from sklearn import cluster, datasets
+from sklearn.neighbors import kneighbors_graph
+from sklearn.preprocessing import StandardScaler
+from itertools import cycle, islice
+
+# Generate datasets
+
+n_samples = 500
+seed = 30
+random_state = 170
+
+noisy_circles = datasets.make_circles(n_samples=n_samples, factor=0.5, noise=0.05, random_state=seed)
+noisy_moons = datasets.make_moons(n_samples=n_samples, noise=0.05, random_state=seed)
+blobs = datasets.make_blobs(n_samples=n_samples, random_state=seed)
+no_structure = (np.random.RandomState(seed).rand(n_samples, 2), None)
+
+X, y = datasets.make_blobs(n_samples=n_samples, random_state=random_state)
+transformation = [[0.6, -0.6], [-0.4, 0.8]]
+X_aniso = np.dot(X, transformation)
+aniso = (X_aniso, y)
+
+varied = datasets.make_blobs(n_samples=n_samples, cluster_std=[1.0, 2.5, 0.5], random_state=random_state)
+
+datasets = [
+    ("Noisy Circles", noisy_circles),
+    ("Noisy Moons", noisy_moons),
+    ("Blobs", blobs),
+    ("No Structure", no_structure),
+    ("Anisotropic", aniso),
+    ("Varied", varied)
+]
+
+# Set up cluster parameters
+
+plt.figure(figsize=(12, 15))
+plt.subplots_adjust(left=0.02, right=0.98, bottom=0.001, top=0.95, wspace=0.05, hspace=0.01)
+
+plot_num = 1
+
+default_base = {
+    "n_neighbors": 3,
+    "n_clusters": 3,
+    "random_state": 42
+}
+
+params_list = [
+    {"n_clusters": 2},
+    {"n_clusters": 2},
+    {},
+    {},
+    {"n_neighbors": 2},
+    {"n_neighbors": 2}
+]
+
+# Run clustering
+
+for i_dataset, ((dataset_name, dataset), params) in enumerate(zip(datasets, params_list)):
+    params = default_base.copy()
+    params.update(params_list[i_dataset])
+
+    X, y = dataset
+    X = StandardScaler().fit_transform(X)
+
+    connectivity = kneighbors_graph(X, n_neighbors=params["n_neighbors"], include_self=False)
+    connectivity = 0.5 * (connectivity + connectivity.T)
+
+    # Оригинальные данные
+    ax = plt.subplot(len(datasets), 4, plot_num)
+    colors = np.array(list(islice(cycle(plt.cm.tab10.colors), 10)))
+    ax.scatter(X[:, 0], X[:, 1], s=10, color=colors[y] if y is not None else "#444444")
+    ax.set_title(dataset_name)
+    ax.set_xticks([])
+    ax.set_yticks([])
+    plot_num += 1
+
+    # Алгоритмы кластеризации
+    algorithms = [
+        ("K-Means", cluster.MiniBatchKMeans(n_clusters=params["n_clusters"], random_state=params["random_state"])),
+        ("Agglomerative", cluster.AgglomerativeClustering(n_clusters=params["n_clusters"], linkage="ward")),
+        ("Spectral", cluster.SpectralClustering(
+            n_clusters=params["n_clusters"],
+            eigen_solver="arpack",
+            affinity="nearest_neighbors",
+            random_state=params["random_state"]))
+    ]
+
+    for name, algorithm in algorithms:
+        ax = plt.subplot(len(datasets), 4, plot_num)
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            algorithm.fit(X)
+            if hasattr(algorithm, "labels_"):
+                y_pred = algorithm.labels_.astype(int)
+            else:
+                y_pred = algorithm.predict(X)
+
+        colors = np.array(list(islice(cycle(plt.cm.tab10.colors), 10)))
+        ax.scatter(X[:, 0], X[:, 1], s=10, color=colors[y_pred])
+
+        if i_dataset == 0:
+            ax.set_title(name)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        ax.set_xlim(-2.5, 2.5)
+        ax.set_ylim(-2.5, 2.5)
+        plot_num += 1
+
 plt.show()
