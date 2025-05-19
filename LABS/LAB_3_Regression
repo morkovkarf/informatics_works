@@ -1,25 +1,109 @@
-x_min=0
-X_max=10
-points=500
-x = np.linspace(x_min, x_max, points)
-e=random.uniform(-3,3)
-y=a*x**b + c + e
+import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.widgets import Slider
 
-def get_dk(x: list, y: list, k: float, b: float) -> float:
-  
-	return result
+print("Степенная функция: a*(x**b) + c")
+# 1. Определение модели
+def power_regression(x, a, b, c):
+    """Степенная функция: a*(x**b) + c"""
+    return a * np.power(x, b) + c
 
-def get_db(x: list, y: list, k: float, b: float) -> float:
-	
-	return result
 
-def fit(speed, epochs):
-	k_list = [k0]
-	b_list = [b0]
-	for i in range(epochs):
-		k = k - speed * get_dk(x, y, k, b)
-		b = b - speed * get_db(x, y, k, b)
-		k_list.append(k)
-		b_list.append(b)
-	return k, b
+# 2. Генерация синтетических данных
+np.random.seed(42)
+x_min, x_max = 1, 5  # x > 0 для степенной функции
+n_points = 50
+x = np.linspace(x_min, x_max, n_points)
 
+# Истинные параметры
+true_a, true_b, true_c = 2.5, 1.7, 3.0
+
+# Генерация данных с шумом
+y = power_regression(x, true_a, true_b, true_c) + np.random.normal(0, 0.5, n_points)
+
+
+# 3. Функции для вычисления градиентов
+def compute_gradients(x, y, a, b, c):
+    """Вычисление частных производных по a, b, c"""
+    y_pred = power_regression(x, a, b, c)
+    error = y_pred - y
+
+    da = 2 * np.mean(error * np.power(x, b))
+    db = 2 * np.mean(error * a * np.power(x, b) * np.log(x))
+    dc = 2 * np.mean(error)
+
+    return da, db, dc
+
+
+# 4. Параметры обучения
+learning_rate = 0.001
+n_epochs = 2000
+initial_params = {'a': 1.0, 'b': 1.0, 'c': 0.0}
+
+
+# 5. Процесс обучения
+def train(x, y, initial_params, learning_rate, n_epochs):
+    params_history = {'a': [], 'b': [], 'c': []}
+    a, b, c = initial_params['a'], initial_params['b'], initial_params['c']
+
+    for epoch in range(n_epochs):
+        params_history['a'].append(a)
+        params_history['b'].append(b)
+        params_history['c'].append(c)
+
+        da, db, dc = compute_gradients(x, y, a, b, c)
+        a -= learning_rate * da
+        b -= learning_rate * db
+        c -= learning_rate * dc
+
+    return params_history
+
+
+# Обучаем модель
+params_history = train(x, y, initial_params, learning_rate, n_epochs)
+
+# 6. Создаем график
+fig, ax = plt.subplots(figsize=(10, 6))
+plt.subplots_adjust(bottom=0.25)
+
+# Отображаем данные и начальную кривую
+scatter = ax.scatter(x, y, color='blue', label='Данные с шумом')
+line, = ax.plot(x, power_regression(x, initial_params['a'], initial_params['b'], initial_params['c']),
+                'r-', linewidth=2, label='Регрессия')
+true_line, = ax.plot(x, power_regression(x, true_a, true_b, true_c),
+                     'g--', alpha=0.5, label='Истинная функция')
+
+ax.set_title('Степенная регрессия: y = a·xᵇ + c')
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.legend()
+ax.grid(True)
+
+# Слайдер для управления эпохами
+ax_slider = plt.axes([0.2, 0.1, 0.6, 0.03])
+epoch_slider = Slider(ax_slider, 'Эпоха', 0, n_epochs - 1, valinit=0, valstep=1)
+
+
+def update(val):
+    epoch = int(epoch_slider.val)
+    a = params_history['a'][epoch]
+    b = params_history['b'][epoch]
+    c = params_history['c'][epoch]
+
+    line.set_ydata(power_regression(x, a, b, c))
+    ax.set_title(f'Степенная регрессия: y = a·xᵇ + c\nЭпоха: {epoch}, a={a:.3f}, b={b:.3f}, c={c:.3f}')
+    fig.canvas.draw_idle()
+
+
+epoch_slider.on_changed(update)
+
+plt.show()
+
+# Вывод итоговых результатов
+final_a = params_history['a'][-1]
+final_b = params_history['b'][-1]
+final_c = params_history['c'][-1]
+
+
+print(f"Истинные параметры: a={true_a}, b={true_b}, c={true_c}")
+print(f"Найденные параметры: a={final_a:.4f}, b={final_b:.4f}, c={final_c:.4f}")
